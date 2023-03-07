@@ -18,14 +18,14 @@ struct ContentView: View {
     
     var body: some View {
         NavigationView {
-            List {
-                Section {
+            VStack(alignment: .leading) {
+                Text(createSubTitle())
+                    .padding(.leading)
+                List {
                     TextField("Enter your word", text: $newWord)
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
-                }
-                
-                Section {
+
                     ForEach(usedWords, id: \.self) { word in
                         HStack {
                             Image(systemName: "\(word.count).circle")
@@ -35,8 +35,12 @@ struct ContentView: View {
                 }
             }
             .navigationTitle(rootWord)
+            .navigationDocument("fdfv")
             .onSubmit (addNewWord)
             .onAppear(perform: startGame)
+            .toolbar {
+                Button("Restart", action: restartGame)
+            }
             .alert(errorTitle, isPresented: $showingError) {
                 Button("OK") {}
             } message: {
@@ -48,6 +52,11 @@ struct ContentView: View {
     func addNewWord() {
         let answer = newWord.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
         guard answer.count > 0 else { return }
+        
+        guard !isRootWord(word: answer) else {
+            wordError(title: "It's root word", message: "You can't enter root word")
+            return
+        }
         
         guard isOriginal(word: answer) else {
             wordError(title: "Word been used already", message: "Be more original")
@@ -61,6 +70,11 @@ struct ContentView: View {
         
         guard isReal(word: answer) else {
             wordError(title: "Word not recognized", message: "You can't just make them up")
+            return
+        }
+        
+        guard isMoreThenThreeCharacters(word: answer) else {
+            wordError(title: "Too shord", message: "Use word with more than three characters")
             return
         }
         withAnimation {
@@ -78,6 +92,22 @@ struct ContentView: View {
             }
         }
         fatalError("Could not load start.txt file from the bundle.")
+    }
+    
+    func restartGame() {
+        startGame()
+        usedWords.removeAll()
+    }
+    
+    func createSubTitle() -> String {
+        let isOneWord = usedWords.count == 1 ? "word" : "words"
+        var score = 0
+        
+        for word in usedWords {
+            score = score + word.count
+        }
+        
+        return "\(usedWords.count) \(isOneWord), score: \(score)"
     }
     
     func isOriginal(word: String) -> Bool {
@@ -102,6 +132,14 @@ struct ContentView: View {
         let range = NSRange(location: 0, length: word.utf16.count)
         let misspelledRange = checker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap: false, language: "en")
         return misspelledRange.location == NSNotFound
+    }
+    
+    func isMoreThenThreeCharacters(word: String) -> Bool {
+        word.count > 2
+    }
+    
+    func isRootWord(word: String) -> Bool {
+        word == rootWord
     }
     
     func wordError(title: String, message: String) {
